@@ -1,0 +1,27 @@
+// Sample existing rules
+export const initialRules = [
+  { id: 1, type: 'hard', text: '11h Ruhezeit zwischen Schichten', source: 'form', category: 'Arbeitszeitgesetz', appliesTo: 'all' },
+  { id: 2, type: 'hard', text: 'Max 48h/Woche durchschnittlich', source: 'form', category: 'Arbeitszeitgesetz', appliesTo: 'all' },
+  { id: 3, type: 'hard', text: 'Montags nicht verfügbar', source: 'nl', category: 'Mitarbeiter-Einschränkung', appliesTo: 'Müller' },
+  { id: 4, type: 'hard', text: 'Frühdienst Ambulanzen: Min. 1 Facharzt mit Notfallzertifizierung', source: 'form', category: 'Qualifikation', appliesTo: 'all' },
+  { id: 5, type: 'soft', text: 'Max 2 Wochenenden pro Person/Monat', source: 'nl', category: 'Fairness', appliesTo: 'all' },
+  { id: 6, type: 'soft', text: 'Bevorzugt Spätdienste', source: 'nl', category: 'Präferenz', appliesTo: 'Hornuss' },
+  { id: 7, type: 'soft', text: 'Max 3 Nachtdienste pro Monat', source: 'nl', category: 'Präferenz', appliesTo: 'Hornuss' },
+  { id: 8, type: 'hard', text: 'Keine Nachtdienste (in Ausbildung)', source: 'form', category: 'Qualifikation', appliesTo: 'Leibenguth' },
+  { id: 9, type: 'soft', text: 'Bevorzugt keine Wochenenden', source: 'nl', category: 'Präferenz', appliesTo: 'Duffner' },
+  { id: 10, type: 'hard', text: 'Keine Reisemedizin am Montag (laufende Weiterbildung)', source: 'nl', category: 'Mitarbeiter-Einschränkung', appliesTo: 'Luisa Denkel' },
+  { id: 11, type: 'soft', text: 'Bevorzugt Konsiliardienste', source: 'nl', category: 'Präferenz', appliesTo: 'Jörg Frey' },
+  { id: 12, type: 'hard', text: 'Freitags nicht verfügbar (Teilzeit)', source: 'form', category: 'Mitarbeiter-Einschränkung', appliesTo: 'Vanessa Girard' },
+  { id: 13, type: 'soft', text: 'Bevorzugt Ambulanz-Schichten', source: 'nl', category: 'Präferenz', appliesTo: 'Simone Priebe' },
+  { id: 14, type: 'hard', text: 'Keine Rufbereitschaft (gesundheitliche Gründe)', source: 'form', category: 'Mitarbeiter-Einschränkung', appliesTo: 'Dominik Hewel' },
+  { id: 15, type: 'soft', text: 'Max 1 Wochenende pro Monat', source: 'nl', category: 'Präferenz', appliesTo: 'Marius Müller' },
+  { id: 16, type: 'hard', text: 'Dienstags nicht verfügbar (Forschungstag)', source: 'form', category: 'Mitarbeiter-Einschränkung', appliesTo: 'Pauli Marxer' },
+  // Shift-specific rules
+  { id: 17, type: 'hard', text: 'Nur Fachärzte mit Notfallzertifizierung', source: 'form', category: 'Myko/Echi/Notfall', appliesTo: 'Myko/Echi/Notfall' },
+  { id: 18, type: 'hard', text: 'Mindestens Oberarzt-Level erforderlich', source: 'form', category: 'OA', appliesTo: 'OA' },
+  { id: 19, type: 'hard', text: 'ABS-Zertifizierung erforderlich', source: 'form', category: 'BK', appliesTo: 'BK' },
+  { id: 20, type: 'soft', text: 'Bevorzugt erfahrene Ärzte (>3 Jahre)', source: 'form', category: 'PP', appliesTo: 'PP' },
+  { id: 21, type: 'hard', text: 'Nur Chefarzt oder Oberarzt', source: 'form', category: 'OA Station', appliesTo: 'OA Station' },
+  { id: 22, type: 'soft', text: 'Max. 2 Personen gleichzeitig', source: 'form', category: 'Reise', appliesTo: 'Reise' },
+  { id: 23, type: 'hard', text: 'Mindestens 1 Person mit Oberarzt-Level', source: 'form', category: 'OA Konsil', appliesTo: 'OA Konsil' },
+];
