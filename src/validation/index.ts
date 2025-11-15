@@ -2,12 +2,17 @@
  * Validation Module
  *
  * Main entry point for the validation system.
- * Provides access to evaluators and validation utilities.
+ * Provides access to evaluators, validation pipeline, and React hooks.
  */
 
+// Core evaluators
 export * from './evaluators';
 
-// Future exports will include:
-// export * from './pipeline';
-// export * from './useValidation';
-// export * from './memoization';
+// Validation pipeline
+export * from './pipeline';
+
+// React hooks
+export * from './useValidation';
+
+// Caching utilities
+export * from './memoization';
