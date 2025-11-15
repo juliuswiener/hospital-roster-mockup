@@ -1,11 +1,11 @@
 // Dialog components export
-// These will be populated as we extract dialogs from the main index.jsx
+// Extracted dialogs from the main index.jsx
 
-// Placeholder exports - replace with actual implementations
-export const EmployeeFormDialog = () => null;
-export const ShiftFormDialog = () => null;
-export const NaturalLanguageDialog = () => null;
-export const ConstraintViolationDialog = () => null;
-export const PlanGenerationDialog = () => null;
-export const EmergencyCoverageDialog = () => null;
-export const RuleEditDialog = () => null;
+export { EmployeeFormDialog } from './EmployeeFormDialog';
+export { ShiftFormDialog } from './ShiftFormDialog';
+export { WarningConfirmDialog } from './WarningConfirmDialog';
+export { NaturalLanguageDialog } from './NaturalLanguageDialog';
+export { ConstraintViolationDialog } from './ConstraintViolationDialog';
+export { PlanGenerationDialog } from './PlanGenerationDialog';
+export { EmergencyCoverageDialog } from './EmergencyCoverageDialog';
+export { RuleEditDialog } from './RuleEditDialog';
