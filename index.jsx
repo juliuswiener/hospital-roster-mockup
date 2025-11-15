@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FileText, MessageSquare, List, Plus, Edit2, Trash2, Check, X, AlertCircle, CheckCircle, Users, Clock, Settings, Calendar, RefreshCw, Download, Share2, User } from 'lucide-react';
+import { FileText, MessageSquare, List, Plus, Edit2, Trash2, Check, X, AlertCircle, CheckCircle, Users, Clock, Settings, Calendar, RefreshCw, Download, Share2, User, Wifi, WifiOff } from 'lucide-react';
 import { WarningDialog, ContextMenu, AvailabilityDropdown, MonthYearPicker, DetailsSidePanel } from './src/components';
 import {
   employees,
@@ -13,6 +13,13 @@ import {
   multiUnitData as initialMultiUnitData,
   excelViewData as initialExcelViewData
 } from './src/data';
+import {
+  usePlanGeneration,
+  useBackendHealth,
+  transformScheduleForSolver,
+  transformAvailabilityForSolver,
+  applyGeneratedSchedule
+} from './src/solver';
 
 const HybridConfigDemo = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -59,10 +66,48 @@ const HybridConfigDemo = () => {
     return initial;
   });
 
-  // Use schedule data from imported data
-  const scheduleData = initialScheduleData;
+  // Schedule data - now state-based for solver integration
+  const [scheduleData, setScheduleData] = useState(initialScheduleData);
   const multiUnitData = initialMultiUnitData;
   const excelViewData = initialExcelViewData;
+
+  // OR-Tools solver integration
+  const {
+    isGenerating: solverIsGenerating,
+    generationProgress: solverProgress,
+    generationError,
+    generationResult,
+    generate: startSolverGeneration,
+    cancel: cancelGeneration,
+    reset: resetGenerationState
+  } = usePlanGeneration();
+
+  const { isHealthy: backendIsHealthy, checkHealth } = useBackendHealth();
+
+  // Solver configuration state
+  const [selectedOptimizationMode, setSelectedOptimizationMode] = useState('optimal');
+  const [customTimeLimit, setCustomTimeLimit] = useState(10);
+  const [selectedStations, setSelectedStations] = useState(['Ambulanzen', 'Konsiliardienst', 'ABS', 'Station v. Frer.']);
+
+  // Handle solver result when it completes
+  useEffect(() => {
+    if (generationResult && generationResult.solution) {
+      const newSchedule = applyGeneratedSchedule(scheduleData, generationResult);
+      setScheduleData(newSchedule);
+      setShowPlanGenerationDialog(false);
+
+      // Show success message (could be a toast/notification)
+      console.log('Plan generation completed!', generationResult.analysis);
+    }
+  }, [generationResult]);
+
+  // Show error if generation fails
+  useEffect(() => {
+    if (generationError) {
+      console.error('Generation failed:', generationError);
+      // Could show error dialog here
+    }
+  }, [generationError]);
 
   const getRulesForEmployee = (employeeName) => {
     return rules.filter(rule => rule.appliesTo === 'all' || rule.appliesTo === employeeName.replace('Dr. ', ''));
@@ -141,26 +186,39 @@ const HybridConfigDemo = () => {
     closeContextMenu();
   };
 
-  const startGeneration = () => {
-    setShowPlanGenerationDialog(false);
+  const startGeneration = async () => {
+    // Check backend health first
+    const isHealthy = await checkHealth();
+    if (!isHealthy) {
+      alert('Backend server is not available. Please start the Python backend server first.\n\nRun: cd backend && pip install -r requirements.txt && python -m uvicorn main:app --reload');
+      return;
+    }
+
+    // Transform data for solver
+    const solverData = transformScheduleForSolver(scheduleData, employees, shifts, selectedMonth);
+    const availabilityData = transformAvailabilityForSolver(availability);
+
+    // Prepare configuration
+    const config = {
+      ...solverData,
+      rules: rules,
+      availability: availabilityData,
+      optimizationMode: selectedOptimizationMode,
+      customTimeLimit: customTimeLimit * 60, // Convert minutes to seconds
+      stations: selectedStations
+    };
+
+    // Start solver
+    await startSolverGeneration(config);
     setIsGenerating(true);
     setGenerationProgress(0);
-    const interval = setInterval(() => {
-      setGenerationProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setIsGenerating(false);
-            setGenerationProgress(0);
-          }, 500);
-          return 100;
-        }
-        if (prev < 30) return prev + 5;
-        if (prev < 70) return prev + 2;
-        return prev + 1;
-      });
-    }, 200);
   };
+
+  // Sync solver state with local state for UI
+  useEffect(() => {
+    setIsGenerating(solverIsGenerating);
+    setGenerationProgress(solverProgress);
+  }, [solverIsGenerating, solverProgress]);
 
   // Generate detailed employee information (dummy data)
   const getEmployeeDetailedInfo = (employee) => {
@@ -2121,7 +2179,33 @@ const HybridConfigDemo = () => {
           <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Dienstplan generieren</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-gray-900">Dienstplan generieren</h2>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                  backendIsHealthy === null
+                    ? 'bg-gray-100 text-gray-600'
+                    : backendIsHealthy
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {backendIsHealthy === null ? (
+                    <>
+                      <RefreshCw size={12} className="animate-spin" />
+                      <span>Prüfe Backend...</span>
+                    </>
+                  ) : backendIsHealthy ? (
+                    <>
+                      <Wifi size={12} />
+                      <span>OR-Tools Backend verfügbar</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff size={12} />
+                      <span>Backend nicht erreichbar</span>
+                    </>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={() => setShowPlanGenerationDialog(false)}
                 className="p-1 hover:bg-gray-100 rounded transition-colors"
@@ -2164,7 +2248,18 @@ const HybridConfigDemo = () => {
                 <div className="space-y-2 ml-3">
                   {['Ambulanzen', 'Konsiliardienst', 'ABS', 'Station v. Frer.'].map((station) => (
                     <label key={station} className="flex items-center gap-2">
-                      <input type="checkbox" defaultChecked className="w-4 h-4" />
+                      <input
+                        type="checkbox"
+                        checked={selectedStations.includes(station)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedStations([...selectedStations, station]);
+                          } else {
+                            setSelectedStations(selectedStations.filter(s => s !== station));
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
                       <span className="text-gray-900">{station}</span>
                     </label>
                   ))}
@@ -2193,19 +2288,40 @@ const HybridConfigDemo = () => {
                 <label className="block font-semibold text-gray-900 mb-2">Optimierungsmodus:</label>
                 <div className="space-y-2 ml-3">
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="optimization" className="w-4 h-4" />
+                    <input
+                      type="radio"
+                      name="optimization"
+                      checked={selectedOptimizationMode === 'quick'}
+                      onChange={() => setSelectedOptimizationMode('quick')}
+                      className="w-4 h-4"
+                    />
                     <span className="text-gray-900">Schnell (30 Sekunden, gute Lösung)</span>
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="optimization" defaultChecked className="w-4 h-4" />
+                    <input
+                      type="radio"
+                      name="optimization"
+                      checked={selectedOptimizationMode === 'optimal'}
+                      onChange={() => setSelectedOptimizationMode('optimal')}
+                      className="w-4 h-4"
+                    />
                     <span className="text-gray-900">Optimal (3-5 Minuten, beste Lösung)</span>
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="optimization" className="w-4 h-4" />
+                    <input
+                      type="radio"
+                      name="optimization"
+                      checked={selectedOptimizationMode === 'custom'}
+                      onChange={() => setSelectedOptimizationMode('custom')}
+                      className="w-4 h-4"
+                    />
                     <span className="text-gray-900">Benutzerdefiniert (Zeit-Limit:</span>
                     <input
                       type="number"
-                      defaultValue="10"
+                      value={customTimeLimit}
+                      onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 10)}
+                      min="1"
+                      max="60"
                       className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
                     />
                     <span className="text-gray-900">Minuten)</span>
@@ -2233,20 +2349,78 @@ const HybridConfigDemo = () => {
               </div>
             </div>
 
+            {/* Error Display */}
+            {generationError && (
+              <div className="mx-6 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800">
+                  <AlertCircle size={20} />
+                  <span className="font-semibold">Fehler bei der Generierung:</span>
+                </div>
+                <p className="mt-2 text-sm text-red-700">{generationError}</p>
+                <button
+                  onClick={resetGenerationState}
+                  className="mt-2 text-sm text-red-600 hover:underline"
+                >
+                  Fehler zurücksetzen
+                </button>
+              </div>
+            )}
+
+            {/* Generation Progress */}
+            {solverIsGenerating && (
+              <div className="mx-6 mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-800 mb-2">
+                  <RefreshCw size={20} className="animate-spin" />
+                  <span className="font-semibold">Generiere Dienstplan...</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${solverProgress}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-blue-700">
+                  {solverProgress < 30
+                    ? 'Initialisiere Solver...'
+                    : solverProgress < 50
+                    ? 'Erstelle Constraints...'
+                    : solverProgress < 90
+                    ? 'Optimiere Lösung...'
+                    : 'Finalisiere Plan...'}
+                </p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex justify-end gap-3 p-6 border-t">
-              <button
-                onClick={() => setShowPlanGenerationDialog(false)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={startGeneration}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-              >
-                Generieren
-              </button>
+              {solverIsGenerating ? (
+                <button
+                  onClick={cancelGeneration}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                >
+                  Abbrechen
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowPlanGenerationDialog(false)}
+                    className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    Schließen
+                  </button>
+                  <button
+                    onClick={startGeneration}
+                    disabled={!backendIsHealthy}
+                    className={`px-4 py-2 rounded transition-colors ${
+                      backendIsHealthy
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Generieren
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
