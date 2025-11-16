@@ -1,22 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
 from database import get_db
+from fastapi import APIRouter, Depends, HTTPException
 from models.plan import Plan
-from schemas.plan import PlanCreate, PlanUpdate, PlanResponse
+from schemas.plan import PlanCreate, PlanResponse, PlanUpdate
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 
-@router.get("/", response_model=List[PlanResponse])
+@router.get("/", response_model=list[PlanResponse])
 def get_plans(db: Session = Depends(get_db)):
     """Get all plans, ordered by most recently updated"""
     return db.query(Plan).order_by(Plan.updated_at.desc()).all()
 
 
-@router.get("/month/{month}", response_model=List[PlanResponse])
+@router.get("/month/{month}", response_model=list[PlanResponse])
 def get_plans_by_month(month: str, db: Session = Depends(get_db)):
     """Get all plans for a specific month (format: YYYY-MM)"""
     return db.query(Plan).filter(Plan.month == month).order_by(Plan.updated_at.desc()).all()

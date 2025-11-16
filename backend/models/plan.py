@@ -1,9 +1,10 @@
-from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, JSON
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from database import Base
 import uuid
 from datetime import datetime
+
+from database import Base
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 
 class Plan(Base):
@@ -34,4 +35,6 @@ class Plan(Base):
     created_by = Column(String(255))
 
     # Relationships
-    assignments = relationship("ShiftAssignment", back_populates="plan", cascade="all, delete-orphan")
+    assignments = relationship(
+        "ShiftAssignment", back_populates="plan", cascade="all, delete-orphan"
+    )

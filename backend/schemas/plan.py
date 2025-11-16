@@ -1,20 +1,21 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class PlanBase(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     month: str  # Format: YYYY-MM
     status: str = "draft"  # draft, active, archived
-    optimization_mode: Optional[str] = None
-    time_limit_seconds: Optional[int] = None
-    selected_stations: List[str] = []
-    schedule_data: Dict[str, Any] = {}
-    solver_result: Optional[Dict[str, Any]] = None
-    solver_status: Optional[str] = None
+    optimization_mode: str | None = None
+    time_limit_seconds: int | None = None
+    selected_stations: list[str] = []
+    schedule_data: dict[str, Any] = {}
+    solver_result: dict[str, Any] | None = None
+    solver_status: str | None = None
     is_auto_generated: bool = False
 
 
@@ -23,19 +24,19 @@ class PlanCreate(PlanBase):
 
 
 class PlanUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-    schedule_data: Optional[Dict[str, Any]] = None
-    solver_result: Optional[Dict[str, Any]] = None
-    solver_status: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
+    status: str | None = None
+    schedule_data: dict[str, Any] | None = None
+    solver_result: dict[str, Any] | None = None
+    solver_status: str | None = None
 
 
 class PlanResponse(PlanBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str] = None
+    created_by: str | None = None
 
     class Config:
         from_attributes = True

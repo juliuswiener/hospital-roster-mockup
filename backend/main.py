@@ -13,7 +13,7 @@ except ImportError:
 
 # Import CRUD routers (from persistence branch)
 try:
-    from routers import assignments, employees, plans, rules, shifts, availabilities
+    from routers import assignments, availabilities, employees, plans, rules, shifts
 
     HAS_CRUD_ROUTERS = True
 except ImportError:

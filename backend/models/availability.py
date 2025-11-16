@@ -1,8 +1,9 @@
-from sqlalchemy import Column, String, DateTime, JSON
-from sqlalchemy.dialects.postgresql import UUID
-from database import Base
 import uuid
 from datetime import datetime
+
+from database import Base
+from sqlalchemy import JSON, Column, DateTime, String
+from sqlalchemy.dialects.postgresql import UUID
 
 
 class MonthlyAvailability(Base):

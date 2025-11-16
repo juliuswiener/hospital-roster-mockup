@@ -10,8 +10,7 @@ from pathlib import Path
 # Add backend directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from database import engine, Base
-from models import Employee, Shift, ShiftAssignment, SchedulingRule, Plan, MonthlyAvailability
+from database import Base, engine
 
 
 def create_all_tables():

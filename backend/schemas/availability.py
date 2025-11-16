@@ -1,12 +1,13 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class AvailabilityBase(BaseModel):
     month: str  # Format: YYYY-MM
-    availability_data: Dict[str, Any] = {}
+    availability_data: dict[str, Any] = {}
 
 
 class AvailabilityCreate(AvailabilityBase):
@@ -14,7 +15,7 @@ class AvailabilityCreate(AvailabilityBase):
 
 
 class AvailabilityUpdate(BaseModel):
-    availability_data: Dict[str, Any]
+    availability_data: dict[str, Any]
 
 
 class AvailabilityResponse(AvailabilityBase):

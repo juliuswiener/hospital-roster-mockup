@@ -123,7 +123,10 @@ class ObjectiveBuilder:
         # Find the equal utilization rule
         equal_util_rule = None
         for rule in self.rules:
-            if rule.get("type") == "soft" and rule.get("parameters", {}).get("objective") == "equal_utilization":
+            if (
+                rule.get("type") == "soft"
+                and rule.get("parameters", {}).get("objective") == "equal_utilization"
+            ):
                 if rule.get("isActive", True):
                     equal_util_rule = rule
                     break
