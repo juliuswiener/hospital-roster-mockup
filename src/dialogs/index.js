@@ -9,3 +9,4 @@ export { ConstraintViolationDialog } from './ConstraintViolationDialog';
 export { PlanGenerationDialog } from './PlanGenerationDialog';
 export { EmergencyCoverageDialog } from './EmergencyCoverageDialog';
 export { RuleEditDialog } from './RuleEditDialog';
+export { GenerationProgressDialog } from './GenerationProgressDialog';

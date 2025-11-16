@@ -4,6 +4,7 @@
 export { RulesView } from './RulesView';
 export { EmployeesView } from './EmployeesView';
 export { ShiftsView } from './ShiftsView';
+export { KontrolleView } from './KontrolleView';
 
 // These are complex views that remain in main component for now
 // Can be extracted as needed based on complexity

@@ -1,22 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import List, Optional
-from uuid import UUID
 from datetime import date
+from uuid import UUID
 
 from database import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query
 from models.assignment import ShiftAssignment
-from schemas.assignment import AssignmentCreate, AssignmentUpdate, AssignmentResponse
+from schemas.assignment import AssignmentCreate, AssignmentResponse, AssignmentUpdate
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
 
-@router.get("/", response_model=List[AssignmentResponse])
+@router.get("/", response_model=list[AssignmentResponse])
 def get_assignments(
     start_date: date = Query(...),
     end_date: date = Query(...),
-    employee_id: Optional[UUID] = Query(None),
-    shift_id: Optional[UUID] = Query(None),
+    employee_id: UUID | None = Query(None),
+    shift_id: UUID | None = Query(None),
     db: Session = Depends(get_db),
 ):
     query = db.query(ShiftAssignment).filter(
@@ -58,8 +57,8 @@ def create_assignment(assignment: AssignmentCreate, db: Session = Depends(get_db
     return db_assignment
 
 
-@router.post("/bulk", response_model=List[AssignmentResponse])
-def create_assignments_bulk(assignments: List[AssignmentCreate], db: Session = Depends(get_db)):
+@router.post("/bulk", response_model=list[AssignmentResponse])
+def create_assignments_bulk(assignments: list[AssignmentCreate], db: Session = Depends(get_db)):
     created = []
     for assignment_data in assignments:
         db_assignment = ShiftAssignment(**assignment_data.model_dump())
@@ -77,9 +76,7 @@ def create_assignments_bulk(assignments: List[AssignmentCreate], db: Session = D
 def update_assignment(
     assignment_id: UUID, assignment: AssignmentUpdate, db: Session = Depends(get_db)
 ):
-    db_assignment = (
-        db.query(ShiftAssignment).filter(ShiftAssignment.id == assignment_id).first()
-    )
+    db_assignment = db.query(ShiftAssignment).filter(ShiftAssignment.id == assignment_id).first()
 
     if not db_assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
@@ -98,9 +95,7 @@ def update_assignment(
 
 @router.delete("/{assignment_id}")
 def delete_assignment(assignment_id: UUID, db: Session = Depends(get_db)):
-    db_assignment = (
-        db.query(ShiftAssignment).filter(ShiftAssignment.id == assignment_id).first()
-    )
+    db_assignment = db.query(ShiftAssignment).filter(ShiftAssignment.id == assignment_id).first()
 
     if not db_assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")

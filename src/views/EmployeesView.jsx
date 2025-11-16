@@ -1,13 +1,16 @@
 import React from 'react';
-import { Plus, MessageSquare, Edit2, Settings } from 'lucide-react';
+import { Plus, MessageSquare, Edit2, Settings, Trash2 } from 'lucide-react';
 
 export const EmployeesView = ({
   employees,
   rules,
   showGeneralRules,
-  setShowGeneralRules,
+  onToggleGeneralRules,
   onAddEmployee,
   onAddRule,
+  onEditEmployee,
+  onAddRuleForEmployee,
+  onDeleteEmployee,
   getRulesForEmployee,
 }) => {
   return (
@@ -30,15 +33,21 @@ export const EmployeesView = ({
             Neue Regel
           </button>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showGeneralRules}
-            onChange={(e) => setShowGeneralRules(e.target.checked)}
-            className="rounded"
-          />
-          <span className="text-gray-700">Allgemeine Regeln anzeigen</span>
-        </label>
+        <div className="bg-white border-2 border-gray-300 rounded-lg p-3 flex items-center gap-3">
+          <p className="font-semibold text-gray-900 text-sm">Allgemeine Regeln anzeigen</p>
+          <button
+            onClick={onToggleGeneralRules}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              showGeneralRules ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                showGeneralRules ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
       </div>
       <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden">
         <table className="w-full">
@@ -54,20 +63,11 @@ export const EmployeesView = ({
           </thead>
           <tbody>
             {employees.map((employee, idx) => {
-              const employeeRules = getRulesForEmployee
-                ? getRulesForEmployee(employee.name)
-                : rules.filter(
-                    (r) =>
-                      r.appliesTo === 'all' ||
-                      r.appliesTo === employee.name.replace('Dr. ', '')
-                  );
+              const employeeRules = getRulesForEmployee(employee.name);
               const specificRules = employeeRules.filter((r) => r.appliesTo !== 'all');
               const generalRules = employeeRules.filter((r) => r.appliesTo === 'all');
               return (
-                <tr
-                  key={idx}
-                  className="border-b border-gray-200 hover:bg-gray-50"
-                >
+                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="px-4 py-4 font-semibold text-gray-900">{employee.name}</td>
                   <td className="px-4 py-4 text-gray-700">{employee.contract}</td>
                   <td className="px-4 py-4 text-gray-700">{employee.hours}h</td>
@@ -130,13 +130,26 @@ export const EmployeesView = ({
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex gap-2">
-                      <button className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1">
+                      <button
+                        onClick={() => onEditEmployee(employee)}
+                        className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1"
+                      >
                         <Edit2 size={14} />
                         Bearbeiten
                       </button>
-                      <button className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200 flex items-center gap-1">
+                      <button
+                        onClick={() => onAddRuleForEmployee(employee)}
+                        className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200 flex items-center gap-1"
+                      >
                         <Settings size={14} />
                         Regeln
+                      </button>
+                      <button
+                        onClick={() => onDeleteEmployee(employee.initials)}
+                        className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 flex items-center gap-1"
+                      >
+                        <Trash2 size={14} />
+                        Löschen
                       </button>
                     </div>
                   </td>

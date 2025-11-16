@@ -1,7 +1,8 @@
 """Hard constraint implementations for the roster solver."""
-from ortools.sat.python import cp_model
-from datetime import datetime, timedelta
+
 import re
+
+from ortools.sat.python import cp_model
 
 
 class ConstraintBuilder:
@@ -11,12 +12,12 @@ class ConstraintBuilder:
         self.model = model
         self.shift_vars = shift_vars
         self.data = data
-        self.employees = data.get('employees', [])
-        self.shifts = data.get('shifts', [])
-        self.days = data.get('days', [])
-        self.rules = data.get('rules', [])
-        self.availability = data.get('availability', {})
-        self.fixed_assignments = data.get('fixed_assignments', [])
+        self.employees = data.get("employees", [])
+        self.shifts = data.get("shifts", [])
+        self.days = data.get("days", [])
+        self.rules = data.get("rules", [])
+        self.availability = data.get("availability", {})
+        self.fixed_assignments = data.get("fixed_assignments", [])
 
     def add_all_hard_constraints(self):
         """Add all hard constraints to the model."""
@@ -33,10 +34,10 @@ class ConstraintBuilder:
         """Ensure each shift has minimum required coverage."""
         for day in self.days:
             for shift in self.shifts:
-                min_staff = self._parse_min_requirement(shift.get('requirements', []))
+                min_staff = self._parse_min_requirement(shift.get("requirements", []))
                 if min_staff > 0:
                     assigned = [
-                        self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                        self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                         for emp in self.employees
                     ]
                     assigned = [v for v in assigned if v is not None]
@@ -48,7 +49,7 @@ class ConstraintBuilder:
         for emp in self.employees:
             for day in self.days:
                 shifts_on_day = [
-                    self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                    self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                     for shift in self.shifts
                 ]
                 shifts_on_day = [v for v in shifts_on_day if v is not None]
@@ -68,10 +69,10 @@ class ConstraintBuilder:
                         for next_shift in self.shifts:
                             if self._is_early_shift(next_shift):
                                 current_var = self.shift_vars.get(
-                                    (emp['initials'], current_day, shift['name']), None
+                                    (emp["initials"], current_day, shift["name"]), None
                                 )
                                 next_var = self.shift_vars.get(
-                                    (emp['initials'], next_day, next_shift['name']), None
+                                    (emp["initials"], next_day, next_shift["name"]), None
                                 )
                                 if current_var is not None and next_var is not None:
                                     # Can't work late shift then early shift next day
@@ -87,7 +88,7 @@ class ConstraintBuilder:
                 total_hours = []
                 for day in week_days:
                     for shift in self.shifts:
-                        var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                        var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                         if var is not None:
                             hours = self._get_shift_duration(shift)
                             total_hours.append(var * hours)
@@ -97,23 +98,23 @@ class ConstraintBuilder:
     def add_qualification_constraints(self):
         """Only qualified staff can work certain shifts."""
         for emp in self.employees:
-            emp_quals = set(emp.get('qualifications', []))
+            emp_quals = set(emp.get("qualifications", []))
             for day in self.days:
                 for shift in self.shifts:
-                    required_quals = self._parse_qualifications(shift.get('requirements', []))
+                    required_quals = self._parse_qualifications(shift.get("requirements", []))
 
                     # Check if employee has all required qualifications
                     if required_quals and not required_quals.issubset(emp_quals):
-                        var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                        var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                         if var is not None:
                             self.model.add(var == 0)
 
     def add_fixed_assignments(self):
         """Lock in pre-assigned/locked shifts."""
         for assignment in self.fixed_assignments:
-            emp_initials = assignment.get('employee')
-            day = str(assignment.get('day'))
-            shift_name = assignment.get('shift')
+            emp_initials = assignment.get("employee")
+            day = str(assignment.get("day"))
+            shift_name = assignment.get("shift")
 
             var = self.shift_vars.get((emp_initials, day, shift_name), None)
             if var is not None:
@@ -121,62 +122,61 @@ class ConstraintBuilder:
 
     def add_availability_constraints(self):
         """Respect employee availability/time-off."""
-        unavailable_codes = {'uw', 'EZ', 'BV', 'krank', 'U', 'K', 'SU', 'MU'}
+        unavailable_codes = {"uw", "EZ", "BV", "krank", "U", "K", "SU", "MU"}
 
         for emp_initials, days_availability in self.availability.items():
             for day, status in days_availability.items():
                 if status in unavailable_codes:
                     # Employee is unavailable on this day
                     for shift in self.shifts:
-                        var = self.shift_vars.get((emp_initials, str(day), shift['name']), None)
+                        var = self.shift_vars.get((emp_initials, str(day), shift["name"]), None)
                         if var is not None:
                             self.model.add(var == 0)
 
     def add_custom_hard_rules(self):
         """Add hard constraints from custom rules."""
         for rule in self.rules:
-            if rule.get('type') == 'hard':
+            if rule.get("type") == "hard":
                 self._apply_rule_constraint(rule)
 
     def _apply_rule_constraint(self, rule):
         """Apply a single rule as a constraint."""
-        text = rule.get('text', '')
-        applies_to = rule.get('appliesTo', 'all')
+        text = rule.get("text", "")
 
         # Pattern: "Employee X does not work on Day Y"
-        if 'arbeitet nicht' in text.lower():
+        if "arbeitet nicht" in text.lower():
             self._add_no_work_constraint(rule)
 
         # Pattern: "Maximum consecutive working days"
-        elif 'aufeinanderfolgende' in text.lower() and 'arbeitstage' in text.lower():
+        elif "aufeinanderfolgende" in text.lower() and "arbeitstage" in text.lower():
             self._add_max_consecutive_days_constraint(rule)
 
     def _add_no_work_constraint(self, rule):
         """Add constraint that employee doesn't work on certain days."""
-        text = rule.get('text', '')
-        applies_to = rule.get('appliesTo', 'all')
+        text = rule.get("text", "")
+        applies_to = rule.get("appliesTo", "all")
 
         # Parse day patterns
-        if 'sonntag' in text.lower():
+        if "sonntag" in text.lower():
             target_days = self._get_sundays()
-        elif 'samstag' in text.lower():
+        elif "samstag" in text.lower():
             target_days = self._get_saturdays()
-        elif 'wochenende' in text.lower():
+        elif "wochenende" in text.lower():
             target_days = self._get_weekends()
         else:
             return
 
         # Apply to specific employee or all
         employees_to_apply = []
-        if applies_to != 'all':
-            employees_to_apply = [e for e in self.employees if applies_to in e.get('name', '')]
+        if applies_to != "all":
+            employees_to_apply = [e for e in self.employees if applies_to in e.get("name", "")]
         else:
             employees_to_apply = self.employees
 
         for emp in employees_to_apply:
             for day in target_days:
                 for shift in self.shifts:
-                    var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                    var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                     if var is not None:
                         self.model.add(var == 0)
 
@@ -184,8 +184,8 @@ class ConstraintBuilder:
         """Add constraint for maximum consecutive working days."""
         # Default to 5 consecutive days max
         max_consecutive = 5
-        text = rule.get('text', '')
-        match = re.search(r'(\d+)', text)
+        text = rule.get("text", "")
+        match = re.search(r"(\d+)", text)
         if match:
             max_consecutive = int(match.group(1))
 
@@ -197,7 +197,7 @@ class ConstraintBuilder:
                     day = str(self.days[i + j])
                     # Check if working any shift
                     for shift in self.shifts:
-                        var = self.shift_vars.get((emp['initials'], day, shift['name']), None)
+                        var = self.shift_vars.get((emp["initials"], day, shift["name"]), None)
                         if var is not None:
                             working_vars.append(var)
 
@@ -209,8 +209,8 @@ class ConstraintBuilder:
     def _parse_min_requirement(self, requirements):
         """Parse minimum staff requirement from shift requirements."""
         for req in requirements:
-            if 'Min.' in req or 'Mindestens' in req:
-                match = re.search(r'(\d+)', req)
+            if "Min." in req or "Mindestens" in req:
+                match = re.search(r"(\d+)", req)
                 if match:
                     return int(match.group(1))
         return 1  # Default to 1 person required
@@ -219,9 +219,15 @@ class ConstraintBuilder:
         """Extract qualification requirements."""
         qualifications = set()
         qual_keywords = [
-            'Facharzt', 'Oberarzt', 'Chefarzt', 'Assistenzarzt',
-            'ABS-zertifiziert', 'Notfallzertifizierung', 'Intensivmedizin',
-            'Ultraschall-Zertifikat', 'Endoskopie'
+            "Facharzt",
+            "Oberarzt",
+            "Chefarzt",
+            "Assistenzarzt",
+            "ABS-zertifiziert",
+            "Notfallzertifizierung",
+            "Intensivmedizin",
+            "Ultraschall-Zertifikat",
+            "Endoskopie",
         ]
         for req in requirements:
             for qual in qual_keywords:
@@ -231,36 +237,36 @@ class ConstraintBuilder:
 
     def _is_late_shift(self, shift):
         """Check if shift ends late (after 21:00)."""
-        time_str = shift.get('time', '')
-        if '-' in time_str:
-            end_time = time_str.split('-')[1].strip()
-            if ':' in end_time:
-                hour = int(end_time.split(':')[0])
+        time_str = shift.get("time", "")
+        if "-" in time_str:
+            end_time = time_str.split("-")[1].strip()
+            if ":" in end_time:
+                hour = int(end_time.split(":")[0])
                 # Night shifts or shifts ending after 21:00
                 return hour >= 21 or hour <= 8
         return False
 
     def _is_early_shift(self, shift):
         """Check if shift starts early (before 09:00)."""
-        time_str = shift.get('time', '')
-        if '-' in time_str:
-            start_time = time_str.split('-')[0].strip()
-            if ':' in start_time:
-                hour = int(start_time.split(':')[0])
+        time_str = shift.get("time", "")
+        if "-" in time_str:
+            start_time = time_str.split("-")[0].strip()
+            if ":" in start_time:
+                hour = int(start_time.split(":")[0])
                 return hour < 9
         return False
 
     def _get_shift_duration(self, shift):
         """Get shift duration in hours."""
-        time_str = shift.get('time', '')
-        if '-' in time_str:
-            parts = time_str.split('-')
+        time_str = shift.get("time", "")
+        if "-" in time_str:
+            parts = time_str.split("-")
             if len(parts) == 2:
                 try:
                     start = parts[0].strip()
                     end = parts[1].strip()
-                    start_hour = int(start.split(':')[0])
-                    end_hour = int(end.split(':')[0])
+                    start_hour = int(start.split(":")[0])
+                    end_hour = int(end.split(":")[0])
 
                     # Handle overnight shifts
                     if end_hour <= start_hour:
@@ -280,7 +286,7 @@ class ConstraintBuilder:
         weeks = []
         current_week = []
 
-        for i, day in enumerate(self.days):
+        for day in self.days:
             current_week.append(day)
             # Simple grouping: every 7 days is a week
             if len(current_week) == 7:

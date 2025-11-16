@@ -1,17 +1,20 @@
 """Main FastAPI application for Hospital Roster Planning."""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Try to import both configurations
 try:
     from config import settings
+
     HAS_SETTINGS = True
 except ImportError:
     HAS_SETTINGS = False
 
 # Import CRUD routers (from persistence branch)
 try:
-    from routers import employees, shifts, assignments, rules
+    from routers import assignments, employees, plans, rules, shifts, availabilities
+
     HAS_CRUD_ROUTERS = True
 except ImportError:
     HAS_CRUD_ROUTERS = False
@@ -19,6 +22,7 @@ except ImportError:
 # Import solver router (from auto-plan-creation branch)
 try:
     from api.routes import router as api_router
+
     HAS_SOLVER_ROUTER = True
 except ImportError:
     HAS_SOLVER_ROUTER = False
@@ -54,6 +58,8 @@ if HAS_CRUD_ROUTERS:
     app.include_router(shifts.router)
     app.include_router(assignments.router)
     app.include_router(rules.router)
+    app.include_router(plans.router)
+    app.include_router(availabilities.router)
 
 # Include solver router for automatic plan generation
 if HAS_SOLVER_ROUTER:
@@ -70,7 +76,7 @@ def health_check():
             "crud": HAS_CRUD_ROUTERS,
             "solver": HAS_SOLVER_ROUTER,
             "settings": HAS_SETTINGS,
-        }
+        },
     }
 
 
@@ -83,19 +89,25 @@ def root():
     }
 
     if HAS_CRUD_ROUTERS:
-        endpoints.update({
-            "employees": "/employees",
-            "shifts": "/shifts",
-            "assignments": "/assignments",
-            "rules": "/rules",
-        })
+        endpoints.update(
+            {
+                "employees": "/employees",
+                "shifts": "/shifts",
+                "assignments": "/assignments",
+                "rules": "/rules",
+                "plans": "/plans",
+                "availabilities": "/availabilities",
+            }
+        )
 
     if HAS_SOLVER_ROUTER:
-        endpoints.update({
-            "generate_plan": "POST /api/generate-plan",
-            "job_status": "GET /api/job-status/{job_id}",
-            "find_replacement": "POST /api/find-replacement",
-        })
+        endpoints.update(
+            {
+                "generate_plan": "POST /api/generate-plan",
+                "job_status": "GET /api/job-status/{job_id}",
+                "find_replacement": "POST /api/find-replacement",
+            }
+        )
 
     return {
         "name": "Hospital Roster API",

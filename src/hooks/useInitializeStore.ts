@@ -100,14 +100,15 @@ export function useInitializeStore() {
 
     // Convert rules to store format
     const rulesWithFormat = initialRules.map((rule) => ({
-      id: `rule-${rule.id}`,
+      id: typeof rule.id === 'string' ? rule.id : `rule-${rule.id}`,
       type: rule.type as 'hard' | 'soft',
       text: rule.text,
       category: rule.category,
       appliesTo: rule.appliesTo,
       source: rule.source,
-      weight: 5,
-      isActive: true,
+      weight: rule.weight ?? 5,
+      isActive: rule.isActive ?? true,
+      parameters: rule.parameters ?? {},
     }));
 
     // Dispatch to store

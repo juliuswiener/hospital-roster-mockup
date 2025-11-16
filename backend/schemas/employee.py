@@ -1,7 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class EmployeeBase(BaseModel):
@@ -9,13 +9,13 @@ class EmployeeBase(BaseModel):
     initials: str
     contract_type: str
     weekly_hours: int = 40
-    qualifications: List[str] = []
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    employee_number: Optional[str] = None
+    qualifications: list[str] = []
+    email: str | None = None
+    phone: str | None = None
+    employee_number: str | None = None
     is_active: bool = True
-    department: Optional[str] = None
-    notes: Optional[str] = None
+    department: str | None = None
+    notes: str | None = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -23,16 +23,16 @@ class EmployeeCreate(EmployeeBase):
 
 
 class EmployeeUpdate(BaseModel):
-    name: Optional[str] = None
-    initials: Optional[str] = None
-    contract_type: Optional[str] = None
-    weekly_hours: Optional[int] = None
-    qualifications: Optional[List[str]] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    is_active: Optional[bool] = None
-    department: Optional[str] = None
-    notes: Optional[str] = None
+    name: str | None = None
+    initials: str | None = None
+    contract_type: str | None = None
+    weekly_hours: int | None = None
+    qualifications: list[str] | None = None
+    email: str | None = None
+    phone: str | None = None
+    is_active: bool | None = None
+    department: str | None = None
+    notes: str | None = None
 
 
 class EmployeeResponse(EmployeeBase):

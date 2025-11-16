@@ -1,18 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
 from database import get_db
+from fastapi import APIRouter, Depends, HTTPException
 from models.shift import Shift
-from schemas.shift import ShiftCreate, ShiftUpdate, ShiftResponse
+from schemas.shift import ShiftCreate, ShiftResponse, ShiftUpdate
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/shifts", tags=["shifts"])
 
 
-@router.get("/", response_model=List[ShiftResponse])
+@router.get("/", response_model=list[ShiftResponse])
 def get_shifts(db: Session = Depends(get_db)):
-    return db.query(Shift).filter(Shift.is_active == True).order_by(Shift.sort_order).all()
+    return db.query(Shift).filter(Shift.is_active.is_(True)).order_by(Shift.sort_order).all()
 
 
 @router.get("/{shift_id}", response_model=ShiftResponse)
@@ -53,6 +52,6 @@ def delete_shift(shift_id: UUID, db: Session = Depends(get_db)):
     if not db_shift:
         raise HTTPException(status_code=404, detail="Shift not found")
 
-    db_shift.is_active = False
+    db_shift.is_active = False  # type: ignore[assignment]
     db.commit()
     return {"message": "Shift deactivated"}

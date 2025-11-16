@@ -1,21 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
 from database import get_db
+from fastapi import APIRouter, Depends, HTTPException
 from models.rule import SchedulingRule
-from schemas.rule import RuleCreate, RuleUpdate, RuleResponse
+from schemas.rule import RuleCreate, RuleResponse, RuleUpdate
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/rules", tags=["rules"])
 
 
-@router.get("/", response_model=List[RuleResponse])
+@router.get("/", response_model=list[RuleResponse])
 def get_rules(db: Session = Depends(get_db)):
-    return db.query(SchedulingRule).filter(SchedulingRule.is_active == True).all()
+    return db.query(SchedulingRule).filter(SchedulingRule.is_active.is_(True)).all()
 
 
-@router.get("/all", response_model=List[RuleResponse])
+@router.get("/all", response_model=list[RuleResponse])
 def get_all_rules(db: Session = Depends(get_db)):
     return db.query(SchedulingRule).all()
 

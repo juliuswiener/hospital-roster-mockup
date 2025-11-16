@@ -12,6 +12,7 @@ import { evaluateQualificationMatch } from './qualificationMatch';
 import { evaluateNoDoubleBooking } from './noDoubleBooking';
 import { evaluateMinStaffing } from './minStaffing';
 import { evaluateWeekendDistribution } from './weekendDistribution';
+import { evaluateAvailabilityViolation } from './availabilityViolation';
 
 // Re-export all types
 export * from './types';
@@ -64,6 +65,13 @@ export const evaluatorRegistry: EvaluatorRegistryEntry[] = [
     appliesTo: 'soft',
     category: 'Fairness',
   },
+  {
+    name: 'AVAILABILITY_VIOLATION',
+    description: 'Checks that employees are not assigned when unavailable',
+    evaluator: evaluateAvailabilityViolation,
+    appliesTo: 'hard',
+    category: 'Verfügbarkeit',
+  },
 ];
 
 // Export individual evaluators for direct use
@@ -74,6 +82,7 @@ export {
   evaluateNoDoubleBooking,
   evaluateMinStaffing,
   evaluateWeekendDistribution,
+  evaluateAvailabilityViolation,
 };
 
 /**

@@ -9,6 +9,7 @@ interface SchedulingRule {
   source: string;
   weight: number;
   isActive: boolean;
+  parameters?: Record<string, unknown>;
 }
 
 interface RulesState {

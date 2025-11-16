@@ -1,7 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from uuid import UUID
 from datetime import date, datetime
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class AssignmentBase(BaseModel):
@@ -10,7 +10,7 @@ class AssignmentBase(BaseModel):
     assignment_date: date
     station: str
     is_locked: bool = False
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class AssignmentCreate(AssignmentBase):
@@ -18,21 +18,21 @@ class AssignmentCreate(AssignmentBase):
 
 
 class AssignmentUpdate(BaseModel):
-    employee_id: Optional[UUID] = None
-    shift_id: Optional[UUID] = None
-    assignment_date: Optional[date] = None
-    station: Optional[str] = None
-    is_locked: Optional[bool] = None
-    notes: Optional[str] = None
+    employee_id: UUID | None = None
+    shift_id: UUID | None = None
+    assignment_date: date | None = None
+    station: str | None = None
+    is_locked: bool | None = None
+    notes: str | None = None
 
 
 class AssignmentResponse(AssignmentBase):
     id: UUID
     has_violation: bool = False
-    violations: List[str] = []
+    violations: list[str] = []
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str] = None
+    created_by: str | None = None
 
     class Config:
         from_attributes = True

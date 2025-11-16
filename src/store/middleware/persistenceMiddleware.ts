@@ -1,6 +1,6 @@
 import { Middleware } from '@reduxjs/toolkit';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:9000';
 
 // Queue for batching saves
 const saveQueue = new Map<string, unknown>();

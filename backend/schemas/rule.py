@@ -1,7 +1,8 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class RuleBase(BaseModel):
@@ -12,7 +13,7 @@ class RuleBase(BaseModel):
     source: str = "form"
     weight: int = 5
     is_active: bool = True
-    parameters: Dict[str, Any] = {}
+    parameters: dict[str, Any] = {}
 
 
 class RuleCreate(RuleBase):
@@ -20,19 +21,19 @@ class RuleCreate(RuleBase):
 
 
 class RuleUpdate(BaseModel):
-    rule_type: Optional[str] = None
-    rule_text: Optional[str] = None
-    category: Optional[str] = None
-    applies_to: Optional[str] = None
-    weight: Optional[int] = None
-    is_active: Optional[bool] = None
-    parameters: Optional[Dict[str, Any]] = None
+    rule_type: str | None = None
+    rule_text: str | None = None
+    category: str | None = None
+    applies_to: str | None = None
+    weight: int | None = None
+    is_active: bool | None = None
+    parameters: dict[str, Any] | None = None
 
 
 class RuleResponse(RuleBase):
     id: UUID
     created_at: datetime
-    created_by: Optional[str] = None
+    created_by: str | None = None
 
     class Config:
         from_attributes = True

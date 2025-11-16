@@ -81,8 +81,8 @@ export const RuleEditDialog = ({ rule, onClose, onSave }) => {
               </div>
             </div>
 
-            {/* Maximum Wochenenden (example - conditional) */}
-            {rule.category === 'Fairness' && (
+            {/* Maximum Wochenenden (only for weekend-specific fairness rules) */}
+            {rule.category === 'Fairness' && !rule.parameters?.objective && (
               <div className="mb-4 ml-3">
                 <div className="flex items-center gap-2">
                   <label className="text-gray-900">Maximum Wochenenden:</label>
@@ -96,6 +96,17 @@ export const RuleEditDialog = ({ rule, onClose, onSave }) => {
                     <option>Monat</option>
                     <option>Woche</option>
                   </select>
+                </div>
+              </div>
+            )}
+
+            {/* Equal utilization objective description */}
+            {rule.parameters?.objective === 'equal_utilization' && (
+              <div className="mb-4 ml-3">
+                <div className="bg-gray-50 p-3 rounded border">
+                  <p className="text-gray-700 text-sm">
+                    {rule.parameters.description || 'Verteilt Schichten gleichmäßig auf alle Mitarbeiter'}
+                  </p>
                 </div>
               </div>
             )}
@@ -165,8 +176,22 @@ export const RuleEditDialog = ({ rule, onClose, onSave }) => {
           <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
             <h3 className="font-semibold text-gray-900 mb-2">Vorschau der Regel:</h3>
             <p className="text-sm text-gray-700">
-              💡 System versucht, jedem Mitarbeiter max. 2 Wochenenden/Monat zuzuweisen. Falls
-              unmöglich (z.B. Personalmangel), kann überschritten werden.
+              {rule.parameters?.objective === 'equal_utilization' ? (
+                <>
+                  💡 System verteilt Schichten gleichmäßig auf alle Mitarbeiter. Jeder Mitarbeiter
+                  erhält möglichst die gleiche Anzahl an Schichten.{' '}
+                  {rule.type === 'soft'
+                    ? 'Falls unmöglich (z.B. unterschiedliche Verfügbarkeiten), wird optimiert.'
+                    : 'Bei Verletzung wird die Generierung abgebrochen.'}
+                </>
+              ) : (
+                <>
+                  💡 System versucht, jedem Mitarbeiter max. 2 Wochenenden/Monat zuzuweisen.{' '}
+                  {rule.type === 'soft'
+                    ? 'Falls unmöglich (z.B. Personalmangel), kann überschritten werden.'
+                    : 'Bei Verletzung wird die Generierung abgebrochen.'}
+                </>
+              )}
             </p>
           </div>
         </div>

@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
 from database import get_db
+from fastapi import APIRouter, Depends, HTTPException
 from models.employee import Employee
-from schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
+from schemas.employee import EmployeeCreate, EmployeeResponse, EmployeeUpdate
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
 
-@router.get("/", response_model=List[EmployeeResponse])
+@router.get("/", response_model=list[EmployeeResponse])
 def get_employees(db: Session = Depends(get_db)):
-    return db.query(Employee).filter(Employee.is_active == True).all()
+    return db.query(Employee).filter(Employee.is_active.is_(True)).all()
 
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
@@ -27,15 +27,22 @@ def get_employee(employee_id: UUID, db: Session = Depends(get_db)):
 def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
     db_employee = Employee(**employee.model_dump())
     db.add(db_employee)
-    db.commit()
-    db.refresh(db_employee)
-    return db_employee
+    try:
+        db.commit()
+        db.refresh(db_employee)
+        return db_employee
+    except IntegrityError as e:
+        db.rollback()
+        if "employees_initials_key" in str(e):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Employee with initials '{employee.initials}' already exists",
+            )
+        raise HTTPException(status_code=409, detail="Duplicate entry")
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
-def update_employee(
-    employee_id: UUID, employee: EmployeeUpdate, db: Session = Depends(get_db)
-):
+def update_employee(employee_id: UUID, employee: EmployeeUpdate, db: Session = Depends(get_db)):
     db_employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -55,6 +62,6 @@ def delete_employee(employee_id: UUID, db: Session = Depends(get_db)):
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    db_employee.is_active = False
+    db_employee.is_active = False  # type: ignore[assignment]
     db.commit()
     return {"message": "Employee deactivated"}

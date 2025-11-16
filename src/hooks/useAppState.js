@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { initialRules, employees } from '../data';
+import { getCurrentMonth, getDaysInMonth, parseYearMonth } from '../constants/calendar';
 
 /**
  * Custom hook for managing all application state
@@ -9,7 +10,7 @@ export const useAppState = () => {
   // Core UI state
   const [activeTab, setActiveTab] = useState('overview');
   const [planningView, setPlanningView] = useState('single');
-  const [selectedMonth, setSelectedMonth] = useState('2025-05');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [controlView, setControlView] = useState('dates');
 
   // Dialog visibility states
@@ -48,12 +49,14 @@ export const useAppState = () => {
   // Rules state
   const [rules, setRules] = useState(initialRules);
 
-  // Availability state
+  // Availability state - dynamic based on current month
   const [availability, setAvailability] = useState(() => {
     const initial = {};
+    const [year, month] = parseYearMonth(getCurrentMonth());
+    const daysInCurrentMonth = getDaysInMonth(year, month);
     employees.forEach((emp) => {
       initial[emp.initials] = {};
-      for (let day = 1; day <= 30; day++) {
+      for (let day = 1; day <= daysInCurrentMonth; day++) {
         initial[emp.initials][day] = null;
       }
     });

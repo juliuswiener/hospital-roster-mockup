@@ -1,8 +1,9 @@
-from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from database import Base
 import uuid
 from datetime import datetime
+
+from database import Base
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 
 class SchedulingRule(Base):

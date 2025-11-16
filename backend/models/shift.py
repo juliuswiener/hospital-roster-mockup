@@ -1,9 +1,10 @@
-from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, ARRAY
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from database import Base
 import uuid
 from datetime import datetime
+
+from database import Base
+from sqlalchemy import ARRAY, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 
 class Shift(Base):
@@ -18,15 +19,13 @@ class Shift(Base):
     time_start = Column(String(10))
     time_end = Column(String(10))
     duration_minutes = Column(Integer)
-    requirements = Column(ARRAY(String), default=[])
-    rules = Column(ARRAY(String), default=[])
+    requirements: Column[list[str]] = Column(ARRAY(String), default=[])
+    rules: Column[list[str]] = Column(ARRAY(String), default=[])
     color = Column(String(50))
     is_active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     assignments = relationship("ShiftAssignment", back_populates="shift")

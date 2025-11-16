@@ -1,4 +1,7 @@
 """Soft constraint and objective function implementations."""
+
+from typing import Any
+
 from ortools.sat.python import cp_model
 
 
@@ -9,18 +12,19 @@ class ObjectiveBuilder:
         self.model = model
         self.shift_vars = shift_vars
         self.data = data
-        self.employees = data.get('employees', [])
-        self.shifts = data.get('shifts', [])
-        self.days = data.get('days', [])
-        self.rules = data.get('rules', [])
+        self.employees = data.get("employees", [])
+        self.shifts = data.get("shifts", [])
+        self.days = data.get("days", [])
+        self.rules = data.get("rules", [])
 
-        self.penalty_vars = []
-        self.reward_vars = []
+        self.penalty_vars: list[Any] = []
+        self.reward_vars: list[Any] = []
 
     def build_all_objectives(self):
         """Build complete objective function with all soft constraints."""
         self.add_weekend_fairness()
         self.add_workload_balance()
+        self.add_equal_utilization()
         self.add_shift_distribution()
         self.add_preference_satisfaction()
         self.add_consecutive_days_penalty()
@@ -44,15 +48,14 @@ class ObjectiveBuilder:
             emp_weekend_shifts = []
             for day in weekend_days:
                 for shift in self.shifts:
-                    var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                    var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                     if var is not None:
                         emp_weekend_shifts.append(var)
 
             if emp_weekend_shifts:
                 # Create variable for this employee's weekend count
                 count_var = self.model.new_int_var(
-                    0, len(emp_weekend_shifts),
-                    f"weekend_count_{emp['initials']}"
+                    0, len(emp_weekend_shifts), f"weekend_count_{emp['initials']}"
                 )
                 self.model.add(count_var == sum(emp_weekend_shifts))
                 weekend_counts.append(count_var)
@@ -79,14 +82,13 @@ class ObjectiveBuilder:
             emp_shifts = []
             for day in self.days:
                 for shift in self.shifts:
-                    var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                    var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                     if var is not None:
                         emp_shifts.append(var)
 
             if emp_shifts:
                 count_var = self.model.new_int_var(
-                    0, len(emp_shifts),
-                    f"shift_count_{emp['initials']}"
+                    0, len(emp_shifts), f"shift_count_{emp['initials']}"
                 )
                 self.model.add(count_var == sum(emp_shifts))
                 shift_counts.append(count_var)
@@ -111,6 +113,57 @@ class ObjectiveBuilder:
                 self.penalty_vars.append(below_min * weight)
                 self.penalty_vars.append(above_max * weight)
 
+    def add_equal_utilization(self):
+        """Apply equal utilization constraint from predefined rule.
+
+        This ensures all employees are used equally by minimizing variance
+        in shift assignments. Checks for the 'equal_utilization' rule and
+        applies it with the configured weight.
+        """
+        # Find the equal utilization rule
+        equal_util_rule = None
+        for rule in self.rules:
+            if rule.get("type") == "soft" and rule.get("parameters", {}).get("objective") == "equal_utilization":
+                if rule.get("isActive", True):
+                    equal_util_rule = rule
+                    break
+
+        if not equal_util_rule or len(self.employees) < 2:
+            return
+
+        weight = equal_util_rule.get("weight", 10)
+
+        # Count total shifts per employee
+        shift_counts = []
+        for emp in self.employees:
+            emp_shifts = []
+            for day in self.days:
+                for shift in self.shifts:
+                    var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
+                    if var is not None:
+                        emp_shifts.append(var)
+
+            if emp_shifts:
+                count_var = self.model.new_int_var(
+                    0, len(emp_shifts), f"equal_util_count_{emp['initials']}"
+                )
+                self.model.add(count_var == sum(emp_shifts))
+                shift_counts.append(count_var)
+
+        # Minimize variance: penalize any difference between employee shift counts
+        # This is stronger than workload_balance as it penalizes ALL pairwise differences
+        if len(shift_counts) >= 2:
+            for i in range(len(shift_counts)):
+                for j in range(i + 1, len(shift_counts)):
+                    diff = self.model.new_int_var(-100, 100, f"equal_util_diff_{i}_{j}")
+                    self.model.add(diff == shift_counts[i] - shift_counts[j])
+
+                    abs_diff = self.model.new_int_var(0, 100, f"equal_util_abs_{i}_{j}")
+                    self.model.add_abs_equality(abs_diff, diff)
+
+                    # Apply weight from the rule - higher weight = stronger enforcement
+                    self.penalty_vars.append(abs_diff * weight)
+
     def add_shift_distribution(self, weight=3):
         """Distribute specific shift types (night shifts, etc.) fairly."""
         # Focus on night shifts or demanding shifts
@@ -124,14 +177,13 @@ class ObjectiveBuilder:
             for emp in self.employees:
                 emp_shifts = []
                 for day in self.days:
-                    var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                    var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                     if var is not None:
                         emp_shifts.append(var)
 
                 if emp_shifts:
                     count_var = self.model.new_int_var(
-                        0, len(emp_shifts),
-                        f"{shift['name']}_count_{emp['initials']}"
+                        0, len(emp_shifts), f"{shift['name']}_count_{emp['initials']}"
                     )
                     self.model.add(count_var == sum(emp_shifts))
                     shift_counts.append(count_var)
@@ -152,15 +204,13 @@ class ObjectiveBuilder:
         """Maximize satisfaction of employee preferences."""
         # Parse preferences from rules
         for rule in self.rules:
-            if rule.get('type') == 'soft' and 'bevorzugt' in rule.get('text', '').lower():
+            if rule.get("type") == "soft" and "bevorzugt" in rule.get("text", "").lower():
                 self._add_preference_reward(rule, weight)
-            elif rule.get('type') == 'soft' and 'vermeiden' in rule.get('text', '').lower():
+            elif rule.get("type") == "soft" and "vermeiden" in rule.get("text", "").lower():
                 self._add_avoidance_penalty(rule, weight)
 
     def add_consecutive_days_penalty(self, weight=8):
         """Penalize too many consecutive working days."""
-        max_preferred_consecutive = 5
-
         for emp in self.employees:
             # Check for 6+ consecutive working days
             if len(self.days) >= 6:
@@ -171,7 +221,7 @@ class ObjectiveBuilder:
                         # Check if working any shift that day
                         day_vars = []
                         for shift in self.shifts:
-                            var = self.shift_vars.get((emp['initials'], day, shift['name']), None)
+                            var = self.shift_vars.get((emp["initials"], day, shift["name"]), None)
                             if var is not None:
                                 day_vars.append(var)
 
@@ -191,21 +241,18 @@ class ObjectiveBuilder:
     def apply_soft_rules(self):
         """Apply soft constraints from custom rules."""
         for rule in self.rules:
-            if rule.get('type') == 'soft':
+            if rule.get("type") == "soft":
                 self._apply_soft_rule(rule)
 
     def _apply_soft_rule(self, rule):
         """Apply a single soft rule as an optimization objective."""
-        text = rule.get('text', '')
-        category = rule.get('category', '')
+        text = rule.get("text", "")
+        category = rule.get("category", "")
 
-        # Get weight based on rule importance
-        weight = self._get_rule_weight(rule)
-
-        if 'fair' in text.lower() or category == 'Fairness':
+        if "fair" in text.lower() or category == "Fairness":
             # Already handled by fairness objectives
             pass
-        elif 'präferenz' in category.lower() or 'bevorzugt' in text.lower():
+        elif "präferenz" in category.lower() or "bevorzugt" in text.lower():
             # Handled in preference satisfaction
             pass
 
@@ -213,42 +260,42 @@ class ObjectiveBuilder:
         """Add reward for satisfying shift preferences."""
         # Parse the rule to extract employee and preferred shifts
         # This is simplified - would need NLP for production
-        applies_to = rule.get('appliesTo', 'all')
-        if applies_to == 'all':
+        applies_to = rule.get("appliesTo", "all")
+        if applies_to == "all":
             return
 
         # Find employee
-        emp = next((e for e in self.employees if applies_to in e.get('name', '')), None)
+        emp = next((e for e in self.employees if applies_to in e.get("name", "")), None)
         if not emp:
             return
 
         # Reward for assigning preferred shifts (simplified)
         for day in self.days:
             for shift in self.shifts:
-                var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                 if var is not None:
                     self.reward_vars.append(var * base_weight)
 
     def _add_avoidance_penalty(self, rule, base_weight):
         """Add penalty for assigning shifts employee wants to avoid."""
-        applies_to = rule.get('appliesTo', 'all')
-        if applies_to == 'all':
+        applies_to = rule.get("appliesTo", "all")
+        if applies_to == "all":
             return
 
-        emp = next((e for e in self.employees if applies_to in e.get('name', '')), None)
+        emp = next((e for e in self.employees if applies_to in e.get("name", "")), None)
         if not emp:
             return
 
         # Penalize assigning certain shifts (simplified)
-        text = rule.get('text', '')
+        text = rule.get("text", "")
         for shift in self.shifts:
-            if shift['name'].lower() in text.lower():
+            if shift["name"].lower() in text.lower():
                 for day in self.days:
-                    var = self.shift_vars.get((emp['initials'], str(day), shift['name']), None)
+                    var = self.shift_vars.get((emp["initials"], str(day), shift["name"]), None)
                     if var is not None:
                         self.penalty_vars.append(var * base_weight)
 
-    def _get_rule_weight(self, rule):
+    def _get_rule_weight(self, _rule):
         """Get numerical weight for a rule."""
         # Could be stored in rule object or derived from priority
         return 5  # Default weight
@@ -267,18 +314,18 @@ class ObjectiveBuilder:
 
     def _is_demanding_shift(self, shift):
         """Check if shift is demanding (night, on-call, etc.)."""
-        name = shift.get('name', '').lower()
-        time_str = shift.get('time', '')
+        name = shift.get("name", "").lower()
+        time_str = shift.get("time", "")
 
         # Night shifts
-        if 'nacht' in name or 'rufbereitschaft' in name:
+        if "nacht" in name or "rufbereitschaft" in name:
             return True
 
         # Check if shift time indicates night work
-        if '-' in time_str:
+        if "-" in time_str:
             try:
-                end_time = time_str.split('-')[1].strip()
-                hour = int(end_time.split(':')[0])
+                end_time = time_str.split("-")[1].strip()
+                hour = int(end_time.split(":")[0])
                 if hour <= 8:  # Ends in early morning
                     return True
             except (ValueError, IndexError):

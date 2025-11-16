@@ -21,37 +21,37 @@ export const getRulesForEmployee = (rules, employeeName) => {
  * @param {string} employeeInitials - Employee initials
  * @param {string} day - Day string
  * @param {string} shift - Shift name
+ * @param {string} violationType - Optional specific violation type
  * @returns {string} Violation message
  */
-export const getViolationTooltip = (employeeInitials, day, shift) => {
-  const violations = [
-    'Ruhezeit-Verletzung: Weniger als 11 Stunden zwischen Schichten',
-    'Maximale Wochenarbeitszeit überschritten (>48h)',
-    'Keine Qualifikation für diese Schicht vorhanden',
-    'Maximale Anzahl Nachtdienste pro Monat überschritten',
-    'Wochenend-Regel: Mehr als 2 Wochenenddienste im Monat',
-    'Konflikt mit eingetragenem Urlaub/Abwesenheit',
-    'Mindestanzahl freie Tage nicht eingehalten',
-  ];
+export const getViolationTooltip = (employeeInitials, day, shift, violationType = null) => {
+  const violations = {
+    restTime: 'Ruhezeit-Verletzung: Weniger als 11 Stunden zwischen Schichten',
+    maxWeeklyHours: 'Maximale Wochenarbeitszeit überschritten (>48h)',
+    qualification: 'Keine Qualifikation für diese Schicht vorhanden',
+    maxNightShifts: 'Maximale Anzahl Nachtdienste pro Monat überschritten',
+    weekendRule: 'Wochenend-Regel: Mehr als 2 Wochenenddienste im Monat',
+    unavailability: 'Konflikt mit eingetragenem Urlaub/Abwesenheit',
+    minFreeDays: 'Mindestanzahl freie Tage nicht eingehalten',
+  };
 
-  // Return specific violations for demo
-  if (employeeInitials === 'DH' && day === '08') {
-    return 'Ruhezeit-Verletzung: Weniger als 11 Stunden zwischen Schichten';
-  } else if (employeeInitials === 'MM' && day === '06') {
-    return 'Maximale Wochenarbeitszeit überschritten (>48h)';
-  } else if (employeeInitials === 'VG' && day === '11') {
-    return 'Wochenend-Regel: Mehr als 2 Wochenenddienste im Monat';
+  // Return specific violation if type is provided
+  if (violationType && violations[violationType]) {
+    return violations[violationType];
   }
 
-  return violations[Math.floor(Math.random() * violations.length)];
+  // Return generic violation based on context
+  const violationList = Object.values(violations);
+  return violationList[Math.floor(Math.random() * violationList.length)];
 };
 
 /**
  * Get detailed information about an employee
  * @param {Object} employee - Employee object
+ * @param {Object} additionalData - Additional employee data from database
  * @returns {Object} Detailed employee info
  */
-export const getEmployeeDetailedInfo = (employee) => {
+export const getEmployeeDetailedInfo = (employee, additionalData = {}) => {
   const contractYears = {
     Chefarzt: 15,
     Oberarzt: 8,
@@ -59,53 +59,41 @@ export const getEmployeeDetailedInfo = (employee) => {
     Assistenzarzt: 2,
   };
 
-  const daysWorkedThisMonth = Math.floor(Math.random() * 15) + 10;
-  const overtimeHours = Math.floor(Math.random() * 20) - 5;
-
   return {
-    yearsOfService: contractYears[employee.contract] || 3,
-    qualificationsList: employee.qualifications,
-    unavailable: employee.initials === 'DH' ? 'Urlaub' : null,
-    nextVacation: employee.initials === 'MM' ? '2025-11-15' : null,
-    daysWorkedThisMonth,
-    overtimeHours,
-    currentShiftLoad: Math.floor(Math.random() * 5) + 3,
-    preferredShifts: ['PP', 'OA', 'Allgem'].slice(
-      0,
-      Math.floor(Math.random() * 3) + 1
-    ),
+    yearsOfService: additionalData.yearsOfService || contractYears[employee.contract] || 0,
+    qualificationsList: employee.qualifications || [],
+    unavailable: additionalData.unavailable || null,
+    nextVacation: additionalData.nextVacation || null,
+    daysWorkedThisMonth: additionalData.daysWorkedThisMonth || 0,
+    overtimeHours: additionalData.overtimeHours || 0,
+    currentShiftLoad: additionalData.currentShiftLoad || 0,
+    preferredShifts: additionalData.preferredShifts || [],
   };
 };
 
 /**
  * Get detailed information about a shift
  * @param {Object} shift - Shift object
+ * @param {Object} additionalData - Additional shift data from database
  * @returns {Object} Detailed shift info
  */
-export const getShiftDetailedInfo = (shift) => {
-  const staffingLevels = {
-    PP: { required: 2, current: 1, optimal: 3 },
-    OA: { required: 1, current: 1, optimal: 2 },
-    Allgem: { required: 1, current: 0, optimal: 2 },
-    BK: { required: 1, current: 1, optimal: 1 },
-  };
-
+export const getShiftDetailedInfo = (shift, additionalData = {}) => {
   const defaultStaffing = {
     required: 1,
-    current: Math.floor(Math.random() * 2),
+    current: 0,
     optimal: 2,
   };
 
   return {
-    staffing: staffingLevels[shift.name] || defaultStaffing,
-    historicalData: {
-      averageStaff: 1.5,
-      peakTimes: '08:00-12:00',
-      commonIssues: ['Unterbesetzung', 'Qualifikationsmangel'],
+    staffing: additionalData.staffing || defaultStaffing,
+    historicalData: additionalData.historicalData || {
+      averageStaff: 0,
+      peakTimes: null,
+      commonIssues: [],
     },
-    qualifiedEmployees: Math.floor(Math.random() * 10) + 5,
-    lastIncident: null,
-    upcomingChanges: shift.name === 'BK' ? 'Neue ABS-Richtlinien ab 01.12.' : null,
+    qualifiedEmployees: additionalData.qualifiedEmployees || 0,
+    lastIncident: additionalData.lastIncident || null,
+    upcomingChanges: additionalData.upcomingChanges || null,
   };
 };
 
