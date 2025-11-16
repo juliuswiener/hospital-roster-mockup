@@ -1,20 +1,25 @@
 """API routes for roster generation."""
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from datetime import datetime
-import uuid
+
 import asyncio
+import uuid
+from datetime import datetime
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from solver.model import RosterSolver, validate_input_data
 
 from .schemas import (
-    SolverRequest,
     JobResponse,
-    JobStatusResponse,
     JobStatus,
+    JobStatusResponse,
+    OptimizationMode,
+    ParsedRuleResponse,
+    ReplacementCandidate,
     ReplacementRequest,
     ReplacementResponse,
-    ReplacementCandidate,
-    OptimizationMode
+    RuleParsingRequest,
+    RuleParsingResponse,
+    SolverRequest,
 )
-from ..solver.model import RosterSolver, validate_input_data
 
 router = APIRouter()
 
@@ -53,14 +58,13 @@ async def run_solver_task(job_id: str, data: dict, time_limit: int):
 
         # Run solver (this is CPU-bound, ideally run in thread pool)
         result = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: solver.solve(time_limit_seconds=time_limit)
+            None, lambda: solver.solve(time_limit_seconds=time_limit)
         )
 
         jobs[job_id].progress = 0.9
 
         # Check result
-        if result['status'] in ['OPTIMAL', 'FEASIBLE']:
+        if result["status"] in ["OPTIMAL", "FEASIBLE"]:
             jobs[job_id].status = JobStatus.COMPLETED
             jobs[job_id].result = result
             jobs[job_id].progress = 1.0
@@ -88,20 +92,17 @@ async def generate_plan(request: SolverRequest, background_tasks: BackgroundTask
 
     # Create job entry
     jobs[job_id] = JobStatusResponse(
-        job_id=job_id,
-        status=JobStatus.PENDING,
-        progress=0.0,
-        created_at=datetime.now().isoformat()
+        job_id=job_id, status=JobStatus.PENDING, progress=0.0, created_at=datetime.now().isoformat()
     )
 
     # Prepare data for solver
     solver_data = {
-        'employees': [emp.model_dump() for emp in request.employees],
-        'shifts': [shift.model_dump() for shift in request.shifts],
-        'days': [str(d) for d in request.days],
-        'rules': [rule.model_dump() for rule in request.rules],
-        'availability': request.availability,
-        'fixed_assignments': [fa.model_dump() for fa in request.fixed_assignments]
+        "employees": [emp.model_dump() for emp in request.employees],
+        "shifts": [shift.model_dump() for shift in request.shifts],
+        "days": [str(d) for d in request.days],
+        "rules": [rule.model_dump() for rule in request.rules],
+        "availability": request.availability,
+        "fixed_assignments": [fa.model_dump() for fa in request.fixed_assignments],
     }
 
     # Get time limit
@@ -110,7 +111,9 @@ async def generate_plan(request: SolverRequest, background_tasks: BackgroundTask
     # Start background task
     background_tasks.add_task(run_solver_task, job_id, solver_data, time_limit)
 
-    return JobResponse(job_id=job_id, message=f"Plan generation started with {time_limit}s time limit")
+    return JobResponse(
+        job_id=job_id, message=f"Plan generation started with {time_limit}s time limit"
+    )
 
 
 @router.get("/job-status/{job_id}", response_model=JobStatusResponse)
@@ -151,17 +154,10 @@ async def find_replacement(request: ReplacementRequest):
 
     for emp in request.available_employees:
         score, factors = calculate_replacement_score(
-            emp.model_dump(),
-            request.shift.model_dump(),
-            request.day,
-            request.current_schedule
+            emp.model_dump(), request.shift.model_dump(), request.day, request.current_schedule
         )
 
-        candidates.append(ReplacementCandidate(
-            employee=emp,
-            score=score,
-            factors=factors
-        ))
+        candidates.append(ReplacementCandidate(employee=emp, score=score, factors=factors))
 
     # Sort by score descending
     candidates.sort(key=lambda x: x.score, reverse=True)
@@ -170,18 +166,15 @@ async def find_replacement(request: ReplacementRequest):
     return ReplacementResponse(
         candidates=candidates[:3],
         shift_info={
-            'shift': request.shift.model_dump(),
-            'day': request.day,
-            'original_employee': request.current_employee
-        }
+            "shift": request.shift.model_dump(),
+            "day": request.day,
+            "original_employee": request.current_employee,
+        },
     )
 
 
 def calculate_replacement_score(
-    employee: dict,
-    shift: dict,
-    day: str,
-    current_schedule: dict
+    employee: dict, shift: dict, day: str, current_schedule: dict
 ) -> tuple[float, dict]:
     """
     Calculate score for an employee as a replacement.
@@ -194,22 +187,22 @@ def calculate_replacement_score(
 
     # 1. Qualification match (40% weight)
     qual_score = check_qualification_match(employee, shift)
-    factors['qualification_match'] = qual_score
+    factors["qualification_match"] = qual_score
     total_score += qual_score * 0.4
 
     # 2. Current workload (30% weight) - prefer employees with fewer shifts
     workload_score = calculate_workload_score(employee, current_schedule)
-    factors['workload_balance'] = workload_score
+    factors["workload_balance"] = workload_score
     total_score += workload_score * 0.3
 
     # 3. Availability (20% weight)
     availability_score = 100.0  # Assume available since they're in the list
-    factors['availability'] = availability_score
+    factors["availability"] = availability_score
     total_score += availability_score * 0.2
 
     # 4. Recent rest (10% weight) - check if had enough rest
     rest_score = calculate_rest_score(employee, day, current_schedule)
-    factors['rest_compliance'] = rest_score
+    factors["rest_compliance"] = rest_score
     total_score += rest_score * 0.1
 
     return round(total_score, 1), factors
@@ -218,17 +211,23 @@ def calculate_replacement_score(
 def check_qualification_match(employee: dict, shift: dict) -> float:
     """Check if employee has required qualifications."""
     required = set()
-    for req in shift.get('requirements', []):
+    for req in shift.get("requirements", []):
         # Extract qualification keywords
-        for qual in ['Facharzt', 'Oberarzt', 'Chefarzt', 'ABS-zertifiziert',
-                     'Notfallzertifizierung', 'Intensivmedizin']:
+        for qual in [
+            "Facharzt",
+            "Oberarzt",
+            "Chefarzt",
+            "ABS-zertifiziert",
+            "Notfallzertifizierung",
+            "Intensivmedizin",
+        ]:
             if qual.lower() in req.lower():
                 required.add(qual)
 
     if not required:
         return 100.0
 
-    emp_quals = set(employee.get('qualifications', []))
+    emp_quals = set(employee.get("qualifications", []))
     matched = required.intersection(emp_quals)
 
     if len(required) == 0:
@@ -239,11 +238,11 @@ def check_qualification_match(employee: dict, shift: dict) -> float:
 
 def calculate_workload_score(employee: dict, current_schedule: dict) -> float:
     """Score based on current workload (fewer shifts = higher score)."""
-    emp_initials = employee.get('initials')
+    emp_initials = employee.get("initials")
     emp_schedule = current_schedule.get(emp_initials, {})
 
     # Count current shifts
-    shift_count = sum(1 for day_data in emp_schedule.values() if day_data.get('shift'))
+    shift_count = sum(1 for day_data in emp_schedule.values() if day_data.get("shift"))
 
     # Assume average is around 20 shifts per month
     if shift_count < 15:
@@ -258,7 +257,7 @@ def calculate_workload_score(employee: dict, current_schedule: dict) -> float:
 
 def calculate_rest_score(employee: dict, day: str, current_schedule: dict) -> float:
     """Check if employee had sufficient rest before this shift."""
-    emp_initials = employee.get('initials')
+    emp_initials = employee.get("initials")
     emp_schedule = current_schedule.get(emp_initials, {})
 
     # Check previous day
@@ -267,7 +266,7 @@ def calculate_rest_score(employee: dict, day: str, current_schedule: dict) -> fl
         prev_day = str(day_num - 1)
 
         if prev_day in emp_schedule:
-            prev_shift = emp_schedule[prev_day].get('shift')
+            prev_shift = emp_schedule[prev_day].get("shift")
             if prev_shift:
                 # Had a shift yesterday - might not have enough rest
                 # In production, check actual shift times
@@ -278,11 +277,86 @@ def calculate_rest_score(employee: dict, day: str, current_schedule: dict) -> fl
         return 100.0
 
 
+@router.post("/parse-rules", response_model=RuleParsingResponse)
+async def parse_rules(request: RuleParsingRequest):
+    """
+    Parse natural language rules using LLM.
+
+    This endpoint analyzes rule descriptions and returns structured rule objects
+    with validation warnings for unknown employees, shifts, or ambiguities.
+    """
+    try:
+        from services.rule_parser import (
+            RuleParserContext,
+            parse_rules_with_llm,
+            validate_rule_references,
+        )
+
+        # Build context for the LLM
+        context = RuleParserContext(
+            employees=[emp.model_dump() for emp in request.employees],
+            shifts=[shift.model_dump() for shift in request.shifts],
+            availability_codes=request.availability_codes,
+        )
+
+        # Parse rules with LLM
+        parsed_rules = parse_rules_with_llm(request.rule_texts, context)
+
+        # Additional validation
+        validated_rules = [validate_rule_references(rule, context) for rule in parsed_rules]
+
+        # Convert to response format
+        response_rules = []
+        total_warnings = 0
+        total_ambiguities = 0
+
+        for rule in validated_rules:
+            response_rules.append(
+                ParsedRuleResponse(
+                    original_text=rule.original_text,
+                    rule_type=rule.rule_type,
+                    category=rule.category,
+                    applies_to=rule.applies_to,
+                    employee_name=rule.employee_name,
+                    shift_name=rule.shift_name,
+                    day_constraint=rule.day_constraint,
+                    time_period=rule.time_period,
+                    constraint_description=rule.constraint_description,
+                    confidence=rule.confidence,
+                    warnings=rule.warnings,
+                    ambiguities=rule.ambiguities,
+                    suggestions=rule.suggestions,
+                    llm_feedback=rule.llm_feedback,
+                )
+            )
+            total_warnings += len(rule.warnings)
+            total_ambiguities += len(rule.ambiguities)
+
+        # Determine if there are critical issues
+        has_critical = any(
+            rule.confidence < 0.3 or len(rule.warnings) > 2 or len(rule.ambiguities) > 0
+            for rule in validated_rules
+        )
+
+        return RuleParsingResponse(
+            parsed_rules=response_rules,
+            total_warnings=total_warnings,
+            total_ambiguities=total_ambiguities,
+            has_critical_issues=has_critical,
+        )
+
+    except ValueError as e:
+        # API key not configured
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Parsen der Regeln: {str(e)}")
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
         "jobs_in_memory": len(jobs),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
